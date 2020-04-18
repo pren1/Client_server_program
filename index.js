@@ -56,12 +56,14 @@ const openRoom = ({ roomid, mid }) => new Promise(resolve => {
       const timestamp = info[0][4]
       let matchres = message.match(reg);
       // Only send matches message to python client
-      if (matchres && matchres.length > 0){
-        // remove all 【】from message
-        // message = message.replace(/[【】(（"“‘)）"”’]/g, "")
-        message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
-        io_.send({ message, message_length, roomid, mid, uname, timestamp})
-      }
+      // if (matchres && matchres.length > 0){
+      //   // remove all 【】from message
+      //   // message = message.replace(/[【】(（"“‘)）"”’]/g, "")
+      //   message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
+      //   io_.send({ message, message_length, roomid, mid, uname, timestamp})
+      // }
+      message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
+      io_.send({ message, message_length, roomid, mid, uname, timestamp})
       console.log({ message, roomid, mid, uname, timestamp})
     }
   })
