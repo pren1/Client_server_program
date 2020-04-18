@@ -13,7 +13,7 @@ app.use(express.static('front-end'))
 var io_= IO_Server(server, {pingTimeout: 60000});
 
 io_.on("connection", function(socket) {
-  console.log("socket.io connected " + socket.id)
+  console.log("socket.io connected with python_interface program " + socket.id)
   // io_.send("Hello from node.js")
   socket.on("something", function(data) {
     console.log("Received something")
@@ -23,6 +23,7 @@ io_.on("connection", function(socket) {
   socket.on("message", function(data) {
     console.log("Received message")
     console.log(data)
+    close_target_room(21264737)
   })
 })
 
@@ -31,14 +32,16 @@ const no = require('./env')
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-const rooms = new Set()
+const rooms = new Set();
+const on_live_rooms = [];
 
 //const reg = /【(.*)】|【(.*)|(.*)】/;
 const reg = /(.*)【(.*)|(.*)】(.*)|^[(（"“‘]|$[)）"”’]/;
 
 const openRoom = ({ roomid, mid }) => new Promise(resolve => {
   console.log(`OPEN: ${roomid}`)
-  const live = new LiveWS(roomid)
+  const live = new LiveWS(roomid);
+  on_live_rooms.push({"name": roomid, "value": live});
   const autorestart = setTimeout(() => {
     console.log(`AUTORESTART: ${roomid}`)
     live.close()
@@ -66,7 +69,7 @@ const openRoom = ({ roomid, mid }) => new Promise(resolve => {
       io_.send({ message, message_length, roomid, mid, uname, timestamp})
       console.log({ message, roomid, mid, uname, timestamp})
     }
-  })
+  });
 
   live.on('heartbeat', () => {
     clearTimeout(timeout)
@@ -85,12 +88,53 @@ const openRoom = ({ roomid, mid }) => new Promise(resolve => {
   })
 });
 
-const watch = ({ roomid, mid }) => {
+const watch = async ({ roomid, mid }) => {
   if (!rooms.has(roomid)) {
     rooms.add(roomid)
     console.log(`WATCH: ${roomid}`)
-    openRoom({ roomid, mid })
+    await openRoom({ roomid, mid })
+    'if failed, retry 10 times'
+    for (i = 0; i < 10; i++) {
+      'if failed, check target roomid falls within the on_live_rooms or not...'
+      if (typeof on_live_rooms.find(e => e.name === roomid) !== 'undefined'){
+        await openRoom({ roomid, mid })
+        console.log(`CLOSE: ${roomid}`)
+        await wait(50 * i)
+        console.log(`REOPEN: ${roomid}`)
+      }
+      else{
+        console.log('Room closed by remote');
+        break;
+      }
+    }
   }
+}
+
+const close_target_room = (roomid) => {
+  // Find result
+  let result = on_live_rooms.find(e => e.name === roomid);
+  if (typeof result !== 'undefined'){
+    delete_target_roomid_from_on_live_rooms(roomid, result)
+    result['value'].close()
+    console.log(`roomid: ${roomid} closed`)
+  }
+  else{
+    console.log(`${roomid} not exist`)
+  }
+};
+
+const delete_target_roomid_from_on_live_rooms = (roomid, result) => {
+    console.log(`Before close: ${on_live_rooms.length}`);
+    // Then, remove target from the list
+    const index = on_live_rooms.indexOf(result);
+    if (index > -1) {
+      console.log(`find index: ${index}`);
+      on_live_rooms.splice(index, 1);
+      console.log(`After delete: ${on_live_rooms.length}`);
+    }
+    else{
+      console.log("failed to find target roomid")
+    }
 };
 
 const available_room_list = async () => {
@@ -109,5 +153,5 @@ const available_room_list = async () => {
   }
 };
 
-available_room_list();
-// watch({roomid:11588230,mid:123});
+// available_room_list();
+// watch({roomid:21264737,mid:123});
