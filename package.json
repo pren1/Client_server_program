@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "../debugging/bilibili-vtuber-live-danmaku-relay/node_modules/.bin/cross-env NODE_ENV=production node index.js"
+    "start": "cross-env NODE_ENV=production node index.js"
   },
   "dependencies": {
     "bilibili-live-ws": "^3.1.0",
     "cross-env": "^6.0.3",
-    "express": "^4.17.1",
     "got": "^10.0.2",
     "socket.io": "^2.3.0",
     "socket.io-client": "^2.2.0"
