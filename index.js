@@ -9,7 +9,7 @@ const rooms = new Set()
 const on_live_rooms = []
 
 //const reg = /【(.*)】|【(.*)|(.*)】/;
-// const reg = /(.*)【(.*)|(.*)】(.*)|^[(（"“‘]|$[)）"”’]/
+const reg = /(.*)【(.*)|(.*)】(.*)|^[(（"“‘]|$[)）"”’]/
 
 var app = http.createServer()
 var server = app.listen(9003, function () {
