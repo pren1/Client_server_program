@@ -15,16 +15,22 @@ var io_= IO_Server(server, {pingTimeout: 60000});
 io_.on("connection", function(socket) {
   console.log("socket.io connected with python_interface program " + socket.id)
   // io_.send("Hello from node.js")
-  socket.on("something", function(data) {
-    console.log("Received something")
-    console.log(data)
-  })
+  'give commands here'
 
-  socket.on("message", function(data) {
-    console.log("Received message")
-    console.log(data)
-    close_target_room(21264737)
+  socket.on("watch_room", function(data) {
+    console.log(`Server: You should watch room ${data}`)
+    watch({roomid:data,mid:123});
+  });
+
+  socket.on("close_room", function(data) {
+    console.log(`Server: You should close room ${data}`)
+    close_target_room(data)
   })
+  // socket.on("message", function(data) {
+  //   console.log("Received message")
+  //   console.log(data)
+  //   close_target_room(21264737)
+  // })
 })
 
 const { LiveWS } = require('bilibili-live-ws')
@@ -108,6 +114,9 @@ const watch = async ({ roomid, mid }) => {
       }
     }
   }
+  else{
+      console.log('room has had this room!')
+  }
 }
 
 const close_target_room = (roomid) => {
@@ -115,6 +124,7 @@ const close_target_room = (roomid) => {
   let result = on_live_rooms.find(e => e.name === roomid);
   if (typeof result !== 'undefined'){
     delete_target_roomid_from_on_live_rooms(roomid, result)
+    rooms.delete(roomid)
     result['value'].close()
     console.log(`roomid: ${roomid} closed`)
   }

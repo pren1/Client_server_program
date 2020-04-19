@@ -6,7 +6,7 @@ class python_ws_client(object):
         self.sio = socketio.Client()
         self.sio.on('connect', self.socket_connected)
         self.sio.on('message', self.message_received)
-        self.sio.connect('http://localhost:9003')
+        self.sio.connect('http://18.223.43.172:9003')
 
     def socket_connected(self):
         print("Connected with js server")
