@@ -66,6 +66,10 @@ const openRoom = ({ roomid }) =>
           message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
           io.send({ message, message_length, roomid, mid, uname, timestamp})
         }
+        else{
+          message_length = -1;
+          io.send({ message, message_length, roomid, mid, uname, timestamp})
+        }
         console.log({ message, roomid, mid, uname, timestamp })
       }
     })
