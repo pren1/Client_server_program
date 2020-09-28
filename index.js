@@ -1,23 +1,18 @@
-const http = require('http')
-const socketIO = require('socket.io')
-const got = require('got')
-const { LiveWS } = require('bilibili-live-ws')
+var express = require('express');
+const io = require('socket.io-client')
+const socket = io('https://api.vtbs.moe')
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const IO_Server = require('socket.io')
+// const dispatch = new Server(9003, { serveClient: false })
 
-const rooms = new Set()
-const on_live_rooms = []
-
-//const reg = /【(.*)】|【(.*)|(.*)】/;
-const reg = /(.*)【(.*)|(.*)】(.*)|^[(（"“‘]|$[)）"”’]/
-
-var app = http.createServer()
-var server = app.listen(9003, function () {
-  console.log('Node.js server created')
+var app = express()
+var server = app.listen(9003, function(){
+  console.log("Node.js server created");
 })
-var io = socketIO(server, { pingTimeout: 60000 })
+app.use(express.static('front-end'))
+var io_= IO_Server(server, {pingTimeout: 60000});
 
-io.on('connection', function (socket) {
+io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
   // io.send("Hello from node.js")
   // give commands here
@@ -34,83 +29,122 @@ io.on('connection', function (socket) {
   // socket.on("message", function(data) {
   //   console.log("Received message")
   //   console.log(data)
-  //   close_target_room(21264737)
+  //   watch({roomid: 14085407, mid: 123})
+  //   // watch({roomid: 727143, mid: 123})
+  //   close_target_room(14085407)
   // })
 })
 
-const openRoom = ({ roomid }) =>
-  new Promise((resolve) => {
-    console.log(`OPEN: ${roomid}`)
-    const live = new LiveWS(roomid)
-    on_live_rooms.push({ name: roomid, value: live })
-    const autorestart = setTimeout(() => {
-      console.log(`AUTORESTART: ${roomid}`)
-      live.close()
-    }, 1000 * 60 * 60 * 18)
-    let timeout = setTimeout(() => {
-      console.log(`TIMEOUT: ${roomid}`)
-      live.close()
-    }, 1000 * 45)
-    live.once('live', () => console.log(`LIVE: ${roomid}`))
-    live.on('DANMU_MSG', async ({ info }) => {
-      if (!info[0][9]) {
-        var message = info[1]
-        const mid = info[2][0]
-        const uname = info[2][1]
-        const timestamp = info[0][4]
-        let matchres = message.match(reg)
-        // Only send matches message to python client
-        if (matchres && matchres.length > 0){
-          // remove all 【】from message
-          // message = message.replace(/[【】(（"“‘)）"”’]/g, "")
-          message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
-          io.send({ message, message_length, roomid, mid, uname, timestamp})
-        }
-        else{
-          message_length = -1;
-          io.send({ message, message_length, roomid, mid, uname, timestamp})
-        }
-        console.log({ message, roomid, mid, uname, timestamp })
+// const { LiveWS } = require('bilibili-live-ws')
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+const got = require('got')
+const { KeepLiveWS } = require('bilibili-live-ws')
+const { getConf: getConfW } = require('bilibili-live-ws/extra')
+const no = require('./env')
+
+const rooms = new Set()
+const on_live_rooms = []
+// let address
+// let key
+
+const waiting = []
+
+const opened = new Set()
+const lived = new Set()
+const printStatus = () => {
+  // 如果不要打印连接状况就注释掉下一行
+  console.log(`living/opening: ${lived.size}/${opened.size}`)
+}
+
+const processWaiting = async () => {
+  console.log('processWaiting')
+  while (waiting.length) {
+    while (opened.size - lived.size > 8) {
+      await wait(1000)
+    }
+    await wait(1800)
+    const { f, resolve, roomid } = waiting.shift()
+    f().then(resolve).catch(() => {
+      console.error('redo', roomid)
+      waiting.push({ f, resolve, roomid })
+      if (waiting.length === 1) {
+        processWaiting()
       }
     })
+  }
+}
 
-    live.on('heartbeat', () => {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => {
-        console.log(`TIMEOUT: ${roomid}`)
-        live.close()
-      }, 1000 * 45)
-    })
-    live.on('close', () => {
-      clearTimeout(autorestart)
-      clearTimeout(timeout)
-      resolve({ roomid })
-    })
-    live.on('error', () => {
-      console.log(`ERROR: ${roomid}`)
-    })
+const getConf = roomid => {
+  const p = new Promise(resolve => {
+    waiting.push({ resolve, f: () => getConfW(roomid), roomid })
   })
+  if (waiting.length === 1) {
+    processWaiting()
+  }
+  return p
+}
 
-const watch = async ({ roomid, mid }) => {
+const reg = /(.*)【(.*)|(.*)】(.*)|^[(（"“‘]|$[)）"”’]/;
+
+const openRoom = async ({ roomid, mid }) => {
+  await wait(1000)
+  const { address, key } = await getConf(roomid)
+  opened.add(roomid)
+  console.log(`OPEN: ${roomid}`)
+  printStatus()
+  const live = new KeepLiveWS(roomid, { address, key })
+  on_live_rooms.push({ name: roomid, value: live })
+
+  live.on('live', () => {
+    lived.add(roomid)
+    console.log(`LIVE: ${roomid}`)
+    printStatus()
+  })
+  live.on('error', () => {
+    lived.delete(roomid)
+    opened.delete(roomid)
+    console.log(`ERROR: ${roomid}`)
+    printStatus()
+  })
+  // live.on('close', async () => {
+  //   const { address, key } = await getConf(roomid)
+  //   lived.delete(roomid)
+  //   console.log(`CLOSE: ${roomid}`)
+  //   printStatus()
+  //   live.params[1] = { key, address }
+  // })
+
+  live.on('DANMU_MSG', async ({ info }) => {
+    if (!info[0][9]) {
+      var message = info[1]
+      const mid = info[2][0]
+      const uname = info[2][1]
+      const timestamp = info[0][4]
+      let matchres = message.match(reg);
+      // Only send matches message to python client
+      if (matchres && matchres.length > 0){
+
+        if ([21752686, 8982686].includes(roomid)){
+          console.log("room has been banned!")
+        }
+        else{
+          message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
+          io_.send({ message, message_length, roomid, mid, uname, timestamp})
+        }
+
+      }
+      const listen_length = `living/opening: ${lived.size}/${opened.size}`
+      console.log({ message, roomid, mid, uname, timestamp, listen_length})
+    }
+  })
+}
+
+const watch = ({ roomid, mid }) => {
   if (!rooms.has(roomid)) {
     rooms.add(roomid)
     console.log(`WATCH: ${roomid}`)
-    await openRoom({ roomid, mid })
-    // if failed, retry 10 times
-    for (i = 0; i < 10; i++) {
-      // if failed, check target roomid falls within the on_live_rooms or not...
-      if (typeof on_live_rooms.find((e) => e.name === roomid) !== 'undefined') {
-        await openRoom({ roomid, mid })
-        console.log(`CLOSE: ${roomid}`)
-        await wait(50 * i)
-        console.log(`REOPEN: ${roomid}`)
-      } else {
-        console.log('Room closed by remote')
-        break
-      }
-    }
-  } else {
-    console.log('room has had this room!')
+    openRoom({ roomid, mid })
   }
 }
 
@@ -121,6 +155,8 @@ const close_target_room = (roomid) => {
     delete_target_roomid_from_on_live_rooms(roomid, result)
     rooms.delete(roomid)
     result.value.close()
+    lived.delete(roomid)
+    opened.delete(roomid)
     console.log(`roomid: ${roomid} closed`)
   } else {
     console.log(`${roomid} not exist`)
@@ -140,21 +176,11 @@ const delete_target_roomid_from_on_live_rooms = (roomid, result) => {
   }
 }
 
-const available_room_list = async () => {
-  const data = await got('https://api.vtbs.moe/v1/info').json()
-  var i
-  var counter = 0
-  for (i = 0; i < data.length; i++) {
-    if (data[i]['liveStatus'] === 1) {
-      counter += 1
-      if (counter >= 18) {
-        break
-      }
-      console.log(data[i]['roomid'])
-      watch({ roomid: data[i]['roomid'], mid: 123 })
-    }
-  }
-}
-
-// available_room_list();
-// watch({roomid:21264737,mid:123});
+// socket.on('info', async info => {
+//   // await wait(1000)
+//   info
+//     .filter(({ roomid }) => roomid)
+//     .filter(({ roomid }) => !no.includes(roomid))
+//     .forEach(({ roomid, mid }) => watch({ roomid, mid }))
+//   console.log('REFRESH')
+// })
