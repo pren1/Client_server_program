@@ -61,6 +61,7 @@ const processWaiting = async () => {
   console.log('processWaiting')
   while (waiting.length) {
     while (opened.size - lived.size > 8) {
+      console.log('stuck at processWaiting')
       await wait(1000)
     }
     await wait(1800)
