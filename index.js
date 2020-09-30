@@ -10,7 +10,7 @@ var server = app.listen(9003, function(){
   console.log("Node.js server created");
 })
 app.use(express.static('front-end'))
-var io_= IO_Server(server, {pingTimeout: 60000});
+var io_= IO_Server(server, {pingTimeout: 5000});
 
 io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
