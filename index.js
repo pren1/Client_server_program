@@ -4,7 +4,7 @@ const socket = io('https://api.vtbs.moe')
 
 const IO_Server = require('socket.io')
 // const dispatch = new Server(9003, { serveClient: false })
-
+const rooms = new Set()
 var app = express()
 var server = app.listen(9003, function(){
   console.log("Node.js server created");
@@ -14,7 +14,8 @@ var io_= IO_Server(server, {pingTimeout: 5000});
 
 io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
-  // io.send("Hello from node.js")
+  io_.send(Array.from(rooms));
+
   // give commands here
 
   socket.on('watch_room', function (data) {
@@ -33,6 +34,14 @@ io_.on('connection', function (socket) {
   // socket.on("message", function(data) {
   //   console.log("Received message")
   //   console.log(data)
+  //   io_.send("Hello from node.js")
+  //   rooms.add(1)
+  //   rooms.add(2)
+  //   rooms.add(3)
+  //   console.log(rooms)
+  //   let server_room_array = Array.from(rooms);
+  //   io_.send(server_room_array);
+  //   // io_.send(rooms)
   //   // watch({roomid: 14085407, mid: 123})
   //   // // watch({roomid: 727143, mid: 123})
   //   // close_target_room(14085407)
@@ -47,7 +56,7 @@ const { KeepLiveWS } = require('bilibili-live-ws')
 const { getConf: getConfW } = require('bilibili-live-ws/extra')
 const no = require('./env')
 
-const rooms = new Set()
+
 const on_live_rooms = []
 // let address
 // let key
