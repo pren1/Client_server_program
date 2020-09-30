@@ -14,18 +14,20 @@ var io_= IO_Server(server, {pingTimeout: 5000});
 
 io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
-  io_.send(Array.from(rooms));
-
+  io_.emit("Client_room_list", Array.from(rooms));
+  // io_.send("test")
   // give commands here
 
   socket.on('watch_room', function (data) {
     console.log(`Server: You should watch room ${data}`)
     watch({ roomid: data, mid: 123 })
+    io_.emit("Client_room_list", Array.from(rooms));
   })
 
   socket.on('close_room', function (data) {
     console.log(`Server: You should close room ${data}`)
     close_target_room(data)
+    io_.emit("Client_room_list", Array.from(rooms));
   })
 
   socket.on('disconnect', function() {
@@ -147,6 +149,7 @@ const openRoom = async ({ roomid, mid }) => {
         }
       }
       const listen_length = `living/opening: ${lived.size}/${opened.size}`
+      io_.emit("Client_room_list", Array.from(rooms));
       console.log({ message, roomid, mid, uname, timestamp, listen_length})
     }
   })

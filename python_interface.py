@@ -6,11 +6,19 @@ class python_ws_client(object):
         self.sio = socketio.Client()
         self.sio.on('connect', self.socket_connected)
         self.sio.on('message', self.message_received)
+        self.sio.on('Client_room_list', self.fetch_client_rooms)
+        self.sio.on('disconnect', self.handle_disconnection)
         self.sio.connect('http://localhost:9003')
+
+    def handle_disconnection(self):
+        print("Disconnected, get connected again...")
 
     def socket_connected(self):
         print("Connected with js server")
         print(self.sio.eio.sid)
+
+    def fetch_client_rooms(self, room_list):
+        print(f"client room list: {room_list}")
 
     def message_received(self, message):
         'on received danmakus'
