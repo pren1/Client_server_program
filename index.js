@@ -26,12 +26,16 @@ io_.on('connection', function (socket) {
     console.log(`Server: You should close room ${data}`)
     close_target_room(data)
   })
+
+  socket.on('disconnect', function() {
+      console.log('Got disconnect!');
+   });
   // socket.on("message", function(data) {
   //   console.log("Received message")
   //   console.log(data)
-  //   watch({roomid: 14085407, mid: 123})
-  //   // watch({roomid: 727143, mid: 123})
-  //   close_target_room(14085407)
+  //   // watch({roomid: 14085407, mid: 123})
+  //   // // watch({roomid: 727143, mid: 123})
+  //   // close_target_room(14085407)
   // })
 })
 
@@ -125,7 +129,6 @@ const openRoom = async ({ roomid, mid }) => {
       let matchres = message.match(reg);
       // Only send matches message to python client
       if (matchres && matchres.length > 0){
-
         if ([21752686, 8982686].includes(roomid)){
           console.log("room has been banned!")
         }
@@ -133,7 +136,6 @@ const openRoom = async ({ roomid, mid }) => {
           message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
           io_.send({ message, message_length, roomid, mid, uname, timestamp})
         }
-
       }
       const listen_length = `living/opening: ${lived.size}/${opened.size}`
       console.log({ message, roomid, mid, uname, timestamp, listen_length})
