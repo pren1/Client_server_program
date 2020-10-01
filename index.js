@@ -11,10 +11,12 @@ var server = app.listen(9003, function(){
 })
 app.use(express.static('front-end'))
 var io_= IO_Server(server, {pingTimeout: 5000});
+var global_sid = -1
 
 io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
   io_.emit("Client_room_list", Array.from(rooms));
+  global_sid = socket.id
   // io_.send("test")
   // give commands here
 
@@ -146,7 +148,7 @@ const openRoom = async ({ roomid, mid }) => {
         }
         else{
           message_length = message.replace(/[【】(（"“‘)）"”’]/g, "").length
-          io_.send({ message, message_length, roomid, mid, uname, timestamp})
+          io_.send({ message, message_length, roomid, mid, uname, timestamp, global_sid})
         }
       }
       const listen_length = `living/opening: ${lived.size}/${opened.size}`

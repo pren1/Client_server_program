@@ -5,13 +5,17 @@ class python_ws_client(object):
     def __init__(self):
         'Connect to dataset, connect to js server via ws'
         self.sio = socketio.Client()
-        self.sio.on('connect', self.socket_connected)
+        self.sio.on('connect', self.socket_connected, namespace='/target_name_space')
         # self.sio.on('message', self.message_received)
-        self.sio.on('Pong', self.pong_received)
-        self.sio.on('Client_room_list', self.fetch_client_rooms)
-        self.sio.on('disconnect', self.handle_disconnection)
-        # self.sio.disconnect()
-        self.sio.connect('http://localhost:9003')
+        self.sio.on('Pong', self.pong_received, namespace='/target_name_space')
+        self.sio.on('Client_room_list', self.fetch_client_rooms, namespace='/target_name_space')
+        self.sio.on('disconnect', self.handle_disconnection, namespace='/target_name_space')
+        self.sio.connect('http://localhost:9003', namespaces='/target_name_space')
+
+    def reconnect(self):
+        print("Trying to reconnect...")
+        self.sio.eio.disconnect()
+        self.sio.connect('http://localhost:9003', namespaces='/target_name_space')
 
     def handle_disconnection(self):
         print("Disconnected, get connected again...")
@@ -34,10 +38,13 @@ class python_ws_client(object):
     def send_Ping(self):
         self.ping_time = int(round(time.time() * 1000))
         time.sleep(1)
-        self.sio.emit("ping", self.ping_time)
+        self.sio.emit("ping", self.ping_time, namespace='/target_name_space')
         # self.sio.send("hello")
         # self.sio.emit("close_room", 22227221)
 
 if __name__ == '__main__':
     ws_listenser = python_ws_client()
-    ws_listenser.send_Ping()
+
+    for _ in range(5):
+        ws_listenser.send_Ping()
+        ws_listenser.reconnect()
