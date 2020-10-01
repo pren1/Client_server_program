@@ -33,21 +33,22 @@ io_.on('connection', function (socket) {
   socket.on('disconnect', function() {
       console.log('Got disconnect!');
    });
-  // socket.on("message", function(data) {
-  //   console.log("Received message")
-  //   console.log(data)
-  //   io_.send("Hello from node.js")
-  //   rooms.add(1)
-  //   rooms.add(2)
-  //   rooms.add(3)
-  //   console.log(rooms)
-  //   let server_room_array = Array.from(rooms);
-  //   io_.send(server_room_array);
-  //   // io_.send(rooms)
-  //   // watch({roomid: 14085407, mid: 123})
-  //   // // watch({roomid: 727143, mid: 123})
-  //   // close_target_room(14085407)
-  // })
+  socket.on("ping", function(data) {
+    // console.log("Received message")
+    console.log(data)
+    io_.emit("Pong", new Date().getTime());
+    // io_.send(new Date().getTime())
+    // rooms.add(1)
+    // rooms.add(2)
+    // rooms.add(3)
+    // console.log(rooms)
+    // let server_room_array = Array.from(rooms);
+    // io_.send(server_room_array);
+    // io_.send(rooms)
+    // watch({roomid: 14085407, mid: 123})
+    // // watch({roomid: 727143, mid: 123})
+    // close_target_room(14085407)
+  })
 })
 
 // const { LiveWS } = require('bilibili-live-ws')
