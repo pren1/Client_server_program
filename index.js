@@ -5,6 +5,7 @@ const socket = io('https://api.vtbs.moe')
 const IO_Server = require('socket.io')
 // const dispatch = new Server(9003, { serveClient: false })
 const rooms = new Set()
+var non_unique_room_array = [];
 var app = express()
 var server = app.listen(9003, function(){
   console.log("Node.js server created");
@@ -39,17 +40,8 @@ io_.on('connection', function (socket) {
     // console.log("Received message")
     console.log(data)
     io_.emit("Pong", new Date().getTime());
-    // io_.send(new Date().getTime())
-    // rooms.add(1)
-    // rooms.add(2)
-    // rooms.add(3)
-    // console.log(rooms)
-    // let server_room_array = Array.from(rooms);
-    // io_.send(server_room_array);
-    // io_.send(rooms)
+    calibrate_room_list()
     // watch({roomid: 14085407, mid: 123})
-    // // watch({roomid: 727143, mid: 123})
-    // close_target_room(14085407)
   })
 })
 
@@ -61,7 +53,6 @@ const { KeepLiveWS } = require('bilibili-live-ws')
 const { getConf: getConfW } = require('bilibili-live-ws/extra')
 const no = require('./env')
 
-
 const on_live_rooms = []
 // let address
 // let key
@@ -72,7 +63,59 @@ const opened = new Set()
 const lived = new Set()
 const printStatus = () => {
   // 如果不要打印连接状况就注释掉下一行
-  console.log(`living/opening: ${lived.size}/${opened.size}`)
+  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${non_unique_room_array.length}`)
+}
+
+function arraysEqual(arr1, arr2) {
+    if(arr1.length !== arr2.length)
+        return false;
+    for(var i = arr1.length; i--;) {
+        if(arr1[i] !== arr2[i])
+            return false;
+    }
+    return true;
+}
+
+const calibrate_room_list = () => {
+  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${non_unique_room_array.length}`)
+  const room_set_array = Array.from(rooms)
+  console.log('room_set_array: ' + room_set_array)
+  if (!arraysEqual(room_set_array, non_unique_room_array)){
+    // Get differences, and calibrate
+    var clonedSet = new Set(room_set_array)
+    var removed_array = [];
+    console.log('cloned set: ' + Array.from(clonedSet))
+    for (let i = 0; i < non_unique_room_array.length; i++) {
+      if(clonedSet.has(non_unique_room_array[i])){
+        // contains in clonedSet
+        clonedSet.delete(non_unique_room_array[i])
+      }
+      else{
+        // If it does not exist in the clonedSet, remove it
+        removed_array.push(non_unique_room_array[i])
+      }
+    }
+    var add_array = Array.from(clonedSet)
+
+    // Then, perform calibration..
+    console.log('removed array: ' + removed_array)
+    console.log('add array: ' + add_array)
+
+    for (let i = 0; i < removed_array.length; i++) {
+      close_target_room(removed_array[i])
+      io_.emit("Client_room_list", Array.from(rooms));
+    }
+
+    for (let i = 0; i < add_array.length; i++) {
+      watch({ roomid: add_array[i], mid: 123 })
+      io_.emit("Client_room_list", Array.from(rooms));
+    }
+
+    console.log('clonedSet: ' + Array.from(clonedSet))
+    console.log('rooms: ' + Array.from(rooms))
+  }else{
+    console.log('array equal..')
+  }
 }
 
 const processWaiting = async () => {
@@ -154,6 +197,8 @@ const openRoom = async ({ roomid, mid }) => {
       const listen_length = `living/opening: ${lived.size}/${opened.size}`
       io_.emit("Client_room_list", Array.from(rooms));
       console.log({ message, roomid, mid, uname, timestamp, listen_length})
+      console.log('rooms: ' + Array.from(rooms))
+      console.log('all array: ' + non_unique_room_array)
     }
   })
 }
@@ -161,6 +206,7 @@ const openRoom = async ({ roomid, mid }) => {
 const watch = ({ roomid, mid }) => {
   if (!rooms.has(roomid)) {
     rooms.add(roomid)
+    non_unique_room_array.push(roomid)
     console.log(`WATCH: ${roomid}`)
     openRoom({ roomid, mid })
   }
@@ -172,10 +218,17 @@ const close_target_room = (roomid) => {
   if (typeof result !== 'undefined') {
     delete_target_roomid_from_on_live_rooms(roomid, result)
     rooms.delete(roomid)
+    'remove roomid from non_unique_room_array'
+    // console.log(`Before close non_unique_room_array: ${non_unique_room_array.length}`)
+    const index = non_unique_room_array.indexOf(roomid);
+    if (index > -1) {
+      non_unique_room_array.splice(index, 1);
+    }
     result.value.close()
     lived.delete(roomid)
     opened.delete(roomid)
     console.log(`roomid: ${roomid} closed`)
+    // console.log(`After delete non_unique_room_array: ${non_unique_room_array.length}`)
   } else {
     console.log(`${roomid} not exist`)
   }
@@ -193,12 +246,3 @@ const delete_target_roomid_from_on_live_rooms = (roomid, result) => {
     console.log('failed to find target roomid')
   }
 }
-
-// socket.on('info', async info => {
-//   // await wait(1000)
-//   info
-//     .filter(({ roomid }) => roomid)
-//     .filter(({ roomid }) => !no.includes(roomid))
-//     .forEach(({ roomid, mid }) => watch({ roomid, mid }))
-//   console.log('REFRESH')
-// })
