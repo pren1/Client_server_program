@@ -5,7 +5,6 @@ const socket = io('https://api.vtbs.moe')
 const IO_Server = require('socket.io')
 // const dispatch = new Server(9003, { serveClient: false })
 const rooms = new Set()
-var non_unique_room_array = [];
 var app = express()
 var server = app.listen(9003, function(){
   console.log("Node.js server created");
@@ -18,9 +17,6 @@ io_.on('connection', function (socket) {
   console.log('socket.io connected with python_interface program ' + socket.id)
   io_.emit("Client_room_list", Array.from(rooms));
   global_sid = socket.id
-  // io_.send("test")
-  // give commands here
-
   socket.on('watch_room', function (data) {
     console.log(`Server: You should watch room ${data}`)
     watch({ roomid: data, mid: 123 })
@@ -54,16 +50,12 @@ const { getConf: getConfW } = require('bilibili-live-ws/extra')
 const no = require('./env')
 
 const on_live_rooms = []
-// let address
-// let key
-
 const waiting = []
-
 const opened = new Set()
 const lived = new Set()
 const printStatus = () => {
   // 如果不要打印连接状况就注释掉下一行
-  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${non_unique_room_array.length}`)
+  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${on_live_rooms.length}`)
 }
 
 function arraysEqual(arr1, arr2) {
@@ -76,15 +68,23 @@ function arraysEqual(arr1, arr2) {
     return true;
 }
 
+function extract_non_unique_room_from_onliverooms (){
+  var non_unique_room_array = []
+  for (let i=0; i < on_live_rooms.length; i++){
+    non_unique_room_array.push(on_live_rooms[i].name)
+  }
+  return non_unique_room_array
+}
+
 const calibrate_room_list = () => {
-  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${non_unique_room_array.length}`)
-  const room_set_array = Array.from(rooms)
-  console.log('room_set_array: ' + room_set_array)
-  if (!arraysEqual(room_set_array, non_unique_room_array)){
+  console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${on_live_rooms.length}`)
+  // extract room array from on_live_rooms
+  let non_unique_room_array = extract_non_unique_room_from_onliverooms()
+  if (!arraysEqual(Array.from(rooms), non_unique_room_array)){
     // Get differences, and calibrate
-    var clonedSet = new Set(room_set_array)
+    var clonedSet = new Set(Array.from(rooms))
     var removed_array = [];
-    console.log('cloned set: ' + Array.from(clonedSet))
+    // console.log('cloned set: ' + Array.from(clonedSet))
     for (let i = 0; i < non_unique_room_array.length; i++) {
       if(clonedSet.has(non_unique_room_array[i])){
         // contains in clonedSet
@@ -95,26 +95,17 @@ const calibrate_room_list = () => {
         removed_array.push(non_unique_room_array[i])
       }
     }
-    var add_array = Array.from(clonedSet)
-
     // Then, perform calibration..
     console.log('removed array: ' + removed_array)
-    console.log('add array: ' + add_array)
 
     for (let i = 0; i < removed_array.length; i++) {
-      close_target_room(removed_array[i])
+      close_target_room(removed_array[i], change_room=false)
       io_.emit("Client_room_list", Array.from(rooms));
     }
-
-    for (let i = 0; i < add_array.length; i++) {
-      watch({ roomid: add_array[i], mid: 123 })
-      io_.emit("Client_room_list", Array.from(rooms));
-    }
-
     console.log('clonedSet: ' + Array.from(clonedSet))
     console.log('rooms: ' + Array.from(rooms))
   }else{
-    console.log('array equal..')
+    console.log('array equal Checked')
   }
 }
 
@@ -197,8 +188,9 @@ const openRoom = async ({ roomid, mid }) => {
       const listen_length = `living/opening: ${lived.size}/${opened.size}`
       io_.emit("Client_room_list", Array.from(rooms));
       console.log({ message, roomid, mid, uname, timestamp, listen_length})
-      console.log('rooms: ' + Array.from(rooms))
-      console.log('all array: ' + non_unique_room_array)
+      console.log('room set list: ' + Array.from(rooms))
+      let non_unique_room_array = extract_non_unique_room_from_onliverooms()
+      console.log('non_unique_room_array: ' + non_unique_room_array)
     }
   })
 }
@@ -206,29 +198,33 @@ const openRoom = async ({ roomid, mid }) => {
 const watch = ({ roomid, mid }) => {
   if (!rooms.has(roomid)) {
     rooms.add(roomid)
-    non_unique_room_array.push(roomid)
+    console.log(`WATCH: ${roomid}`)
+    openRoom({ roomid, mid })
+  }
+  else{
+    rooms.add(roomid)
     console.log(`WATCH: ${roomid}`)
     openRoom({ roomid, mid })
   }
 }
 
-const close_target_room = (roomid) => {
+const close_target_room = (roomid, change_room=true) => {
   // Find result
   let result = on_live_rooms.find((e) => e.name === roomid)
   if (typeof result !== 'undefined') {
     delete_target_roomid_from_on_live_rooms(roomid, result)
-    rooms.delete(roomid)
-    'remove roomid from non_unique_room_array'
-    // console.log(`Before close non_unique_room_array: ${non_unique_room_array.length}`)
-    const index = non_unique_room_array.indexOf(roomid);
-    if (index > -1) {
-      non_unique_room_array.splice(index, 1);
+    if (change_room){
+      rooms.delete(roomid)
     }
     result.value.close()
-    lived.delete(roomid)
-    opened.delete(roomid)
-    console.log(`roomid: ${roomid} closed`)
-    // console.log(`After delete non_unique_room_array: ${non_unique_room_array.length}`)
+    if (change_room){
+      lived.delete(roomid)
+      opened.delete(roomid)
+      console.log(`roomid: ${roomid} closed`)
+    }
+    else{
+      console.log(`duplicate roomid: ${roomid} closed`)
+    }
   } else {
     console.log(`${roomid} not exist`)
   }
