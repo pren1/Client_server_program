@@ -153,7 +153,7 @@ const openRoom = async ({ roomid, mid }) => {
       }
       const listen_length = `living/opening: ${lived.size}/${opened.size}`
       io_.emit("Client_room_list", Array.from(rooms));
-      // console.log({ message, roomid, mid, uname, timestamp, listen_length})
+      console.log({ message, roomid, mid, uname, timestamp, listen_length})
     }
   })
 }
