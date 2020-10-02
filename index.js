@@ -187,12 +187,12 @@ const openRoom = async ({ roomid, mid }) => {
           io_.send({ message, message_length, roomid, mid, uname, timestamp, global_sid})
         }
       }
-      const listen_length = `living/opening: ${lived.size}/${opened.size}`
+      const listen_length = `living/opening: ${lived.size}/${opened.size}/${on_live_rooms.length}`
       io_.emit("Client_room_list", Array.from(rooms));
       console.log({ message, roomid, mid, uname, timestamp, listen_length})
-      console.log('room set list: ' + Array.from(rooms))
-      let non_unique_room_array = extract_non_unique_room_from_onliverooms()
-      console.log('non_unique_room_array: ' + non_unique_room_array)
+      // console.log('room set list: ' + Array.from(rooms))
+      // let non_unique_room_array = extract_non_unique_room_from_onliverooms()
+      // console.log('non_unique_room_array: ' + non_unique_room_array)
     }
   })
 }
