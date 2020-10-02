@@ -80,6 +80,8 @@ const calibrate_room_list = () => {
   console.log(`living/opening/non_unqie: ${lived.size}/${opened.size}/${on_live_rooms.length}`)
   // extract room array from on_live_rooms
   let non_unique_room_array = extract_non_unique_room_from_onliverooms()
+  console.log('> room set list: ' + Array.from(rooms))
+  console.log('> non_unique_room_array: ' + non_unique_room_array)
   if (!arraysEqual(Array.from(rooms), non_unique_room_array)){
     // Get differences, and calibrate
     var clonedSet = new Set(Array.from(rooms))
@@ -102,8 +104,8 @@ const calibrate_room_list = () => {
       close_target_room(removed_array[i], change_room=false)
       io_.emit("Client_room_list", Array.from(rooms));
     }
-    console.log('clonedSet: ' + Array.from(clonedSet))
-    console.log('rooms: ' + Array.from(rooms))
+    // console.log('clonedSet: ' + Array.from(clonedSet))
+    // console.log('rooms: ' + Array.from(rooms))
   }else{
     console.log('array equal Checked')
   }
@@ -197,11 +199,6 @@ const openRoom = async ({ roomid, mid }) => {
 
 const watch = ({ roomid, mid }) => {
   if (!rooms.has(roomid)) {
-    rooms.add(roomid)
-    console.log(`WATCH: ${roomid}`)
-    openRoom({ roomid, mid })
-  }
-  else{
     rooms.add(roomid)
     console.log(`WATCH: ${roomid}`)
     openRoom({ roomid, mid })

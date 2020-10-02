@@ -37,8 +37,10 @@ class python_ws_client(object):
         self.ping_time = int(round(time.time() * 1000))
         time.sleep(1)
         # self.sio.emit("watch_room", 14085407)
+        # self.sio.emit("watch_room", 664481)
+        # self.sio.emit("close_room", 664481)
 
-        self.sio.emit("ping", self.ping_time)
+        # self.sio.emit("ping", self.ping_time)
         # self.sio.send("hello")
         # self.sio.emit("close_room", 14085407)
 
@@ -46,4 +48,4 @@ if __name__ == '__main__':
     ws_listenser = python_ws_client()
     ws_listenser.send_Ping()
     ws_listenser.send_Ping()
-    ws_listenser.send_Ping()
+    # ws_listenser.send_Ping()
