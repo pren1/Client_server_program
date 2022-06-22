@@ -10,7 +10,7 @@
     "cross-env": "^6.0.3",
     "express": "^4.17.1",
     "socket.io": "^2.3.0",
-    "got": "^10.0.2",
+    "got": "^11.8.5",
     "socket.io-client": "^2.2.0"
   }
 }
